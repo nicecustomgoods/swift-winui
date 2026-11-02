@@ -108,9 +108,15 @@ public class WindowsAppRuntimeInitializer {
             .appendingPathComponent("WindowsAppRuntimeInstaller.exe")
         let installerExists = FileManager.default.fileExists(atPath: runtimeInstaller.path)
 
+        // KERF PATCH: upstream passes the 1.5 header constant. Ask for Windows App SDK 1.N
+        // instead (default 1.8; override with env WINAPPSDK_MINOR=5..8 to compare without a rebuild).
+        // The bundled Bootstrap.dll is still the 1.5 one and the WinUI bindings are still 1.5.
+        let kerfMinor = ProcessInfo.processInfo.environment["WINAPPSDK_MINOR"].flatMap { UInt32($0) } ?? 8
+        print("Requesting Windows App SDK 1.\(kerfMinor) (MajorMinor 0x\(String(0x00010000 + kerfMinor, radix: 16)))")
+
         func doInit(showUIOnNoMatch: Bool) throws {
             try CHECKED(Initialize(
-                UInt32(WINDOWSAPPSDK_RELEASE_MAJORMINOR),
+                0x00010000 + kerfMinor,
                 WINDOWSAPPSDK_RELEASE_VERSION_TAG_SWIFT,
                 .init(),
                 MddBootstrapInitializeOptions(
