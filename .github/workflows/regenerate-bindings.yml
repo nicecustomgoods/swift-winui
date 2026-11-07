@@ -1,0 +1,89 @@
+# Kerf: regenerate the swift-winrt bindings against Windows App SDK 1.8 on a Windows runner and
+# commit the result back to this branch. Bindings are not generated on the Kerf test laptop
+# (Smart App Control blocks unsigned tools there).
+name: Regenerate bindings (Windows App SDK 1.8)
+
+on:
+  push:
+    branches: [kerf/winappsdk-1.8-bindings]
+    paths: ['Support/**', '.github/workflows/regenerate-bindings.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate (CWinRT, WinAppSDK, WinUI, WebView2Core)
+        shell: pwsh
+        run: |
+          foreach ($p in 'CWinRT', 'WinAppSDK', 'WinUI', 'WebView2Core') {
+            Write-Host "=== $p"
+            & "./Support/$p/generate-bindings.ps1"
+            if ($LASTEXITCODE -ne 0) { throw "$p generation failed" }
+          }
+
+      - name: Inventory of restored packages
+        if: always()
+        shell: pwsh
+        run: |
+          $out = "package-inventory.txt"
+          Get-ChildItem Support -Directory | ForEach-Object {
+            $pk = Join-Path $_.FullName ".packages"
+            if (Test-Path $pk) {
+              "##### $($_.Name)" | Out-File $out -Append
+              Get-ChildItem $pk -Recurse -File -Include *.winmd, *.dll, *.h, *.lib |
+                ForEach-Object { $_.FullName.Substring($pk.Length + 1) } | Out-File $out -Append
+            }
+          }
+
+      - name: Copy 1.8 bootstrapper, headers and import libraries into CWinAppSDK
+        shell: pwsh
+        run: |
+          $pk = "Support/WinAppSDK/.packages"
+          $dst = "Sources/CWinAppSDK/nuget"
+          $report = "asset-copy.txt"
+          foreach ($pair in @(@('x86_64', 'win-x64'), @('arm64', 'win-arm64'))) {
+            $src = Get-ChildItem $pk -Recurse -File -Filter Microsoft.WindowsAppRuntime.Bootstrap.dll |
+              Where-Object { $_.FullName -match "runtimes\\$($pair[1])\\native" } | Select-Object -First 1
+            if (-not $src) { throw "no Bootstrap.dll for $($pair[1])" }
+            Copy-Item $src.FullName "$dst/bin/$($pair[0])/" -Force
+            "bin/$($pair[0]) <- $($src.FullName)" | Out-File $report -Append
+          }
+          # Replace only the headers and libs this package already carries; report any not found.
+          foreach ($h in Get-ChildItem "$dst/include" -File) {
+            $src = Get-ChildItem $pk -Recurse -File -Filter $h.Name | Where-Object { $_.FullName -match '\\include\\' } | Select-Object -First 1
+            if ($src) { Copy-Item $src.FullName $h.FullName -Force; "include/$($h.Name) <- $($src.FullName)" | Out-File $report -Append }
+            else { "include/$($h.Name) KEPT (not in 1.8 packages)" | Out-File $report -Append }
+          }
+          foreach ($l in Get-ChildItem "$dst/lib" -File) {
+            $src = Get-ChildItem $pk -Recurse -File -Filter $l.Name | Where-Object { $_.FullName -match 'x64' -and $_.FullName -notmatch 'arm' } | Select-Object -First 1
+            if ($src) { Copy-Item $src.FullName $l.FullName -Force; "lib/$($l.Name) <- $($src.FullName)" | Out-File $report -Append }
+            else { "lib/$($l.Name) KEPT (not in 1.8 packages)" | Out-File $report -Append }
+          }
+          Get-Content $report
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regeneration-reports
+          path: |
+            package-inventory.txt
+            asset-copy.txt
+
+      - name: Commit regenerated sources to this branch
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A Sources
+          git diff --cached --stat | Select-Object -Last 3
+          if (git diff --cached --quiet) { Write-Host "No changes"; exit 0 }
+          git commit -q -m "Regenerate bindings for Windows App SDK 1.8 (CI)"
+          git push origin HEAD:${{ github.ref_name }}
