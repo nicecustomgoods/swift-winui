@@ -19,10 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate (CWinRT, WinAppSDK, WinUI, WebView2Core)
+      - name: Generate (CWinRT, WindowsFoundation, UWP, WinAppSDK, WinUI, WebView2Core)
         shell: pwsh
         run: |
-          foreach ($p in 'CWinRT', 'WinAppSDK', 'WinUI', 'WebView2Core') {
+          foreach ($p in 'CWinRT', 'WindowsFoundation', 'UWP', 'WinAppSDK', 'WinUI', 'WebView2Core') {
             Write-Host "=== $p"
             & "./Support/$p/generate-bindings.ps1"
             if ($LASTEXITCODE -ne 0) { throw "$p generation failed" }
