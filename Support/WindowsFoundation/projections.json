@@ -13,6 +13,7 @@
     "Windows.Foundation",
   ],
   "exclude": [
-    "Windows.Foundation.PropertyValue"
+    "Windows.Foundation.PropertyValue",
+    "Windows.Foundation.GuidHelper"
   ]
 }
