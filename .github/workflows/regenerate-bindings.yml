@@ -42,6 +42,16 @@ jobs:
             }
           }
 
+      - name: Fetch the 1.8 packages that carry the version header and XAML interop headers
+        shell: pwsh
+        run: |
+          # Not needed for generation, only for the C headers copied below.
+          $nuget = Join-Path $env:TEMP "nuget.exe"
+          foreach ($p in @(@('Microsoft.WindowsAppSDK.Runtime', '1.8.260921001'), @('Microsoft.WindowsAppSDK.WinUI', '1.8.260803003'), @('Microsoft.WindowsAppSDK.Base', '1.8.251216001'))) {
+            & $nuget install $p[0] -Version $p[1] -OutputDirectory Support/WinAppSDK/.packages -DependencyVersion Ignore -NonInteractive | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "nuget install $($p[0]) failed" }
+          }
+
       - name: Copy 1.8 bootstrapper, headers and import libraries into CWinAppSDK
         shell: pwsh
         run: |
@@ -67,6 +77,9 @@ jobs:
             else { "lib/$($l.Name) KEPT (not in 1.8 packages)" | Out-File $report -Append }
           }
           Get-Content $report
+          if (-not (Select-String "$dst/include/WindowsAppSDK-VersionInfo.h" -Pattern 'WINDOWSAPPSDK_RELEASE_MINOR\s+8\b' -Quiet)) {
+            throw "WindowsAppSDK-VersionInfo.h is not the 1.8 header"
+          }
 
       - name: Upload reports
         if: always()
