@@ -51,7 +51,7 @@ open class SwiftApplication: Application, IXamlMetadataProvider {
                 }
 
                 var application: SwiftApplication!
-                Application.start { _ in
+                try Application.start { _ in
                     MainRunLoopTickler.setup()
                     application = (instance as! SwiftApplication.Type).init()
                 }
@@ -76,11 +76,16 @@ open class SwiftApplication: Application, IXamlMetadataProvider {
     }
 
     private lazy var metadataProvider: XamlControlsXamlMetaDataProvider = .init()
-    public func getXamlType(_ type: TypeName) throws -> IXamlType! {
+    public func getXamlType(_ type: TypeName) throws -> AnyIXamlType! {
         try metadataProvider.getXamlType(type)
     }
 
-    public func getXamlType(_ fullName: String) throws -> IXamlType! {
+    public func getXamlType(_ fullName: String) throws -> AnyIXamlType! {
         try metadataProvider.getXamlType(fullName)
+    }
+
+    // New in the 1.8 IXamlMetadataProvider.
+    public func getXmlnsDefinitions() throws -> [XmlnsDefinition] {
+        try metadataProvider.getXmlnsDefinitions()
     }
 }
