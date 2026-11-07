@@ -463,35 +463,6 @@ public enum __ABI_Windows_Foundation {
     )
 
     public typealias IGetActivationFactoryWrapper = InterfaceWrapperBase<__IMPL_Windows_Foundation.IGetActivationFactoryBridge>
-    public class IGuidHelperStatics: WindowsFoundation.IInspectable {
-        override public class var IID: WindowsFoundation.IID { IID___x_ABI_CWindows_CFoundation_CIGuidHelperStatics }
-
-        public func CreateNewGuid() throws -> Foundation.UUID {
-            var result: WindowsFoundation.GUID = .init()
-            _ = try perform(as: __x_ABI_CWindows_CFoundation_CIGuidHelperStatics.self) { pThis in
-                try CHECKED(pThis.pointee.lpVtbl.pointee.CreateNewGuid(pThis, &result))
-            }
-            return .init(from: result)
-        }
-
-        public func get_Empty() throws -> Foundation.UUID {
-            var value: WindowsFoundation.GUID = .init()
-            _ = try perform(as: __x_ABI_CWindows_CFoundation_CIGuidHelperStatics.self) { pThis in
-                try CHECKED(pThis.pointee.lpVtbl.pointee.get_Empty(pThis, &value))
-            }
-            return .init(from: value)
-        }
-
-        public func Equals(_ target: Foundation.UUID, _ value: Foundation.UUID) throws -> Bool {
-            var result: boolean = 0
-            _ = try perform(as: __x_ABI_CWindows_CFoundation_CIGuidHelperStatics.self) { pThis in
-                try CHECKED(pThis.pointee.lpVtbl.pointee.Equals(pThis, .init(from: target), .init(from: value), &result))
-            }
-            return .init(from: result)
-        }
-
-    }
-
     public class IMemoryBuffer: WindowsFoundation.IInspectable {
         override public class var IID: WindowsFoundation.IID { IID___x_ABI_CWindows_CFoundation_CIMemoryBuffer }
 
